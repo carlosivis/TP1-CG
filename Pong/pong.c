@@ -1,31 +1,19 @@
+#include <SFML/Audio.hpp>
 #include <stdio.h>
 #include <SOIL/SOIL.h>
 #include <math.h>
 #include <GL/glew.h>
 #include <GL/freeglut.h>
+
+
 //Compilation flags g++ pong.c -lGL -lGLU -lglut -lSOIL;
 //Defines screen size 
 #define sizex 500
 #define sizey 500
-//Game state flag, the mother of all "magic numbers". Changes game behaviour depending on the flag. 0 = Game, 1 = Pause , 2 = Main Menu , 3 = Credits , 4 = 4 player mode, 5 = Instructions screen
+//Game state flag, the mother of all "magic numbers". Changes game behaviour depending on the flag. 0 = Game, 1 = Pause , 2 = Main Menu , 3 = Credits
 int gamestate = 2;
-//Possible gamestates. Numbers are in order of implementation. Doesn't really matter so long as the numbers are different though.
-#define Stage01 0
-#define Stage02 4
-#define Pause 1
-#define Main_Menu 2
-#define Credits 3
-#define Instructions 5
-#define Ball_Enter_Animation 6
-//Stores the previous state of the game. Required in order to return from the pause menu.
-int previousstate = 2;
-//Background flag. Similar in function to the gamestate variable.
+//Background flag.
 int backgroundstate = 1;
-//Possible background states. Also in order of implementation.
-#define Phantasm_Texture 0
-#define Main_Menu_Texture 1
-#define Credits_Texture 2
-#define Instructions_Texture 3
 //Ball flag.
 int ballstate = 0;
 //Ball position
@@ -64,8 +52,9 @@ GLuint idRanStart;
 GLuint idBackPhantasm;
 GLuint idMenu01;
 GLuint idCredits;
-GLuint idInstructions;
-GLuint idNumbers[10];
+sf::Music barImpact;
+sf::Music zoneImpact;
+
 
 GLuint loadtexture (const char* file){
 	GLuint texture = SOIL_load_OGL_texture(
@@ -83,14 +72,12 @@ void setup(){
 	glClearColor (0, 0, 0, 1);//Sets background colour to a solid black.
 	glEnable (GL_BLEND);//Aparently enables the use of transparency.
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
 	for (int i = 0;i<127;i++)//Initializes all keyboard positions as 0s. Helps against garbage memory screwing up the program.
 		keyboard[i]=0;
 	//Where all textures are loaded. Is it supposed to be done like this ? God knows.
 	//Menu elements
 	idMenu01 = loadtexture("MenuPlaceholder.png");
 	idCredits = loadtexture("CreditsPlaceholder.png");
-	idInstructions = loadtexture("InstructionsPlaceholder.png");
 	//Ball 1 : Yakumo Ran
 	idRanStart = loadtexture("Sprites1.png");
 	idRanSlide = loadtexture("Sprites2.png");
@@ -98,27 +85,15 @@ void setup(){
 	idRanNeutral = loadtexture("Sprites4.png");
 	//Stage Backgrounds
 	idBackPhantasm = loadtexture("BackFinal1.png");
-	//Numbers
-	idNumbers[0] = loadtexture("N0.png");
-	idNumbers[1] = loadtexture("N1.png");
-	idNumbers[2] = loadtexture("N2.png");
-	idNumbers[3] = loadtexture("N3.png");
-	idNumbers[4] = loadtexture("N4.png");
-	idNumbers[5] = loadtexture("N5.png");
-	idNumbers[6] = loadtexture("N6.png");
-	idNumbers[7] = loadtexture("N7.png");
-	idNumbers[8] = loadtexture("N8.png");
-	idNumbers[9] = loadtexture("N9.png");
 }
 
 void drawbackground(){
 	glColor3f(1,1,1);
 	glEnable(GL_TEXTURE_2D);
 	switch (backgroundstate){ //Selects proper background texture depending on the gamemode
-		case Phantasm_Texture : glBindTexture(GL_TEXTURE_2D,idBackPhantasm);break;
-		case Main_Menu_Texture : glBindTexture(GL_TEXTURE_2D,idMenu01);break;
-		case Credits_Texture : glBindTexture(GL_TEXTURE_2D,idCredits);break;
-		case Instructions_Texture : glBindTexture(GL_TEXTURE_2D,idInstructions);break;
+		case 0 : glBindTexture(GL_TEXTURE_2D,idBackPhantasm);break;
+		case 1 : glBindTexture(GL_TEXTURE_2D,idMenu01);break;
+		case 2 : glBindTexture(GL_TEXTURE_2D,idCredits);break;
 	}
 	glBegin(GL_POLYGON);
 		glTexCoord2f(0,0);
@@ -156,84 +131,11 @@ void drawbarvert(int x, int y){
 	glEnd();
 }
 
-void drawscoreaux(){
-	glBegin(GL_POLYGON);
-		glTexCoord2f(0,0);
-		glVertex2f(-20,-30);
-		glTexCoord2f(1,0);
-		glVertex2f(20,-30);
-		glTexCoord2f(1,1);
-		glVertex2f(20,30);
-		glTexCoord2f(0,1);
-		glVertex2f(-20,30);
-	glEnd();
-}
-
-void drawscore(){
-	glColor3f (1,1,1);
-
-	if(score1>=10){
-	glPushMatrix();
-	glTranslatef(80,0,0);
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, idNumbers[score1/10]);
-	drawscoreaux();
-	glDisable(GL_TEXTURE_2D);
-	glPopMatrix();}
-
-	glPushMatrix();
-	glTranslatef(120,0,0);
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, idNumbers[score1%10]);
-	drawscoreaux();
-	glDisable(GL_TEXTURE_2D);
-	glPopMatrix();
-
-	glPushMatrix();
-	glTranslatef(-80,0,0);
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, idNumbers[score2%10]);
-	drawscoreaux();
-	glDisable(GL_TEXTURE_2D);
-	glPopMatrix();
-
-	if(score2>=10){
-	glPushMatrix();
-	glTranslatef(-120,0,0);
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, idNumbers[score2/10]);
-	drawscoreaux();
-	glDisable(GL_TEXTURE_2D);
-	glPopMatrix();}
-
-
-}
-
 void drawball(){
 	glColor3f(1,1,1);
-	if(gamestate==Ball_Enter_Animation){
-		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, idRanSlide);
-		glPushMatrix();
-			glTranslatef(ballx,bally,0);
-			glBegin(GL_POLYGON);
-				glTexCoord2f(0,0);
-				glVertex2f(-30,-30);
-				
-				glTexCoord2f(1,0);
-				glVertex2f(30,-30);
-
-				glTexCoord2f(1,1);
-				glVertex2f(30,30);
-
-				glTexCoord2f(0,1);
-				glVertex2f(-30,30);
-			glEnd();
-			glPopMatrix();
-	}
-	if ((gamestate == Stage01)||(gamestate==Stage02)){//Draws the ball when the gamestate = 0 (Gameplay)
-		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, idRanBall);
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, idRanBall);
+	if ((gamestate == 0)||(gamestate==4)){//Draws the ball when the gamestate = 0 (Gameplay)
 		glPushMatrix();
 			glTranslatef(ballx,bally,0);
 			glRotatef(ballrotateangle,0,0,1);
@@ -255,9 +157,7 @@ void drawball(){
 			glEnd();
 			glPopMatrix();
 		}
-	if ((gamestate == Stage01)||(gamestate==Stage02)||(gamestate==Pause)){//Same as above but for gamestate = 1 (Paused). The difference is that the ball's rotation speed isn't updated here, meaning the ball maintains its angle when the game is paused
-		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, idRanBall);
+	if ((gamestate == 0)||(gamestate==4)||(gamestate==1)){//Same as above but for gamestate = 1 (Paused). The difference is that the ball's rotation speed isn't updated here, meaning the ball maintains its angle when the game is paused
 		glPushMatrix();
 			glTranslatef(ballx,bally,0);
 			glRotatef(ballrotateangle,0,0,1);
@@ -289,72 +189,48 @@ void gameloop(int valor){
 	//Menus
 	if(keyboard[27]){
 		switch(gamestate){
-			case Stage02:{
-				previousstate = gamestate;
-				gamestate = 1;}
+			case 4:
+				gamestate = 1;
 				break;
-			case Stage01:{
-				previousstate = gamestate;
-				gamestate = 1;}//Changes gamestate to 1 (Paused state) when ESC is pressed
+			case 0:
+				gamestate = 1;//Changes gamestate to 1 (Paused state) when ESC is pressed
 				break;
-			case Pause:
-				gamestate = previousstate;//Continues game when the game is paused and the ESC key is pressed
+			case 1:
+				gamestate = 0;//Continues game when the game is paused and the ESC key is pressed
 				break;
 		}
 		keyboard[27] = 0;//Setting ESC to 0 here ensures that the ESC key toggles the pause menu
 	}	
 
-	if ((gamestate==Pause)&&(keyboard[120]))//Exits game when the game is paused and the x key is pressed
+	if ((gamestate==1)&&(keyboard[120]))//Exits game when the game is paused and the x key is pressed
 		exit(0);
 
-	if (gamestate==Pause)
+	if (gamestate==1)
 		if(keyboard[100]){
-			gamestate = Main_Menu;
-			resetball();
-			score1 = 0;
-			score2 = score1;
-			backgroundstate = Main_Menu_Texture;
+			gamestate = 2;
+			backgroundstate = 1;
 		}
 
-	if (gamestate==Ball_Enter_Animation){
-		ballx = ballx + 10;
-		if (ballx>0)
-			gamestate = Stage01;
-	}
-
-	if (gamestate==Main_Menu){
+	if (gamestate==2){
 		drawbackground();
 		if (keyboard[122]){//Key that plays the game
-			ballx = -400;
-			gamestate = Ball_Enter_Animation;
-			backgroundstate = Phantasm_Texture;}
+			gamestate = 0;
+			backgroundstate = 0;}
 		if (keyboard[120]){//Key that leads to the credits screen.
-			gamestate = Credits;
-			backgroundstate = Credits_Texture;}
-		if (keyboard[105]){//Key that leads to the instructions screen.
-			gamestate = Instructions;
-			backgroundstate = Instructions_Texture;
-		}
+			gamestate = 3;
+			backgroundstate = 2;}
 		if (keyboard[99])//Key to exit from the menu.
 			exit(0);
 	}
 
-	if (gamestate==Credits)
+	if (gamestate==3)
 		if (keyboard[122]){
-			gamestate = Main_Menu;
-			backgroundstate = Main_Menu_Texture;
-			keyboard[122]=0;
-		}
-
-	if (gamestate==Instructions)
-		if (keyboard[122]){
-			gamestate = Main_Menu;
-			backgroundstate = Main_Menu_Texture;
-			keyboard[122]=0;
+			gamestate = 2;
+			backgroundstate = 1;
 		}
 
 	//Game logic
-	if ((gamestate==Stage01)||(gamestate==Stage02)){
+	if ((gamestate==0)||(gamestate==4)){
 		if (keyboard[111]==1)//Moves the player's cursors
 			bar1x = bar1x -10;
 		if (keyboard[112]==1)
@@ -364,25 +240,29 @@ void gameloop(int valor){
 		if (keyboard[119]==1)
 			bar2x = bar2x +10;
 
-		if (gamestate==Stage02){
+		if (gamestate==4){
 			if (keyboard[109]==1)//Moves the player's cursors
-				bar4y = bar4y -20;
+				bar4y = bar4y -10;
 			if (keyboard[107]==1)
-				bar4y = bar4y +20;
+				bar4y = bar4y +10;
 			if (keyboard[122]==1)
-				bar3y = bar3y -20;
+				bar3y = bar3y -10;
 			if (keyboard[97]==1)
-				bar3y = bar3y +20;
+				bar3y = bar3y +10;
 		}
 		
 		ballx = ballx + ballspeedx*ballspeedmod;//Moves the ball in the x axis
 		bally = bally + ballspeedy*ballspeedmod;//Moves the ball in the y axis
 		//All logic below here is based off of them juicy magical numbers because it was made on prototype phase. Alas, I am too lazy to change the code so please don't change the window size.
-		if (gamestate == Stage01){
-			if (ballx>sizex-180)//Reflects the ball off the sides
+		if (gamestate == 0){
+			if (ballx>sizex-180){//Reflects the ball off the sides
 				ballspeedx = -1;
-			if (ballx<-sizex+180)
+				zoneImpact.play();
+			}
+			if (ballx<-sizex+180){
 				ballspeedx = 1;
+				zoneImpact.play();
+			}
 		}
 
 		if(bar1x<-280)//Limits the movement of the player's cursors to stay within the screen
@@ -405,26 +285,30 @@ void gameloop(int valor){
 
 		if(ballspeedy==1){
 			if((bally>=480)&&(bally<=500)&&((ballx>bar1x-90)&&(ballx<bar1x+90))){//Reflects the ball if it hits the top bar
+				barImpact.play();
 				ballspeedy = -1;
 				ballspeedmod = ballspeedmod*1.05;//Accelerates the ball whenever it reflects off the racket by 5%
 			}
 		}
 		else{
 			if((bally<=-480)&&(bally>=-500)&&((ballx>bar2x-90)&&(ballx<bar2x+90))){//Same as above but for the bottom bar
+				barImpact.play();
 				ballspeedy = 1;
 				ballspeedmod = ballspeedmod*1.05;
 			}
 		}
 
-		if(gamestate==Stage02){
+		if(gamestate==4){
 			if (ballspeedx==1){
 				if((ballx>=340)&&(ballx<=350)&&((bally>bar4y-90)&&(bally<bar4y+90))){
+					barImpact.play();
 					ballspeedx = -1;
 					ballspeedmod = ballspeedmod*1.05;
 				}
 			}
 			else{
 				if((ballx<=-340)&&(ballx>=-350)&&((bally>bar3y-90)&&(bally<bar3y+90))){
+					barImpact.play();
 					ballspeedx = 1;
 					ballspeedmod = ballspeedmod*1.05;
 				}
@@ -440,7 +324,7 @@ void gameloop(int valor){
 			score1++;
 			resetball();
 		}
-		if (gamestate==Stage02){
+		if (gamestate==4){
 			if(ballx>370){
 				score1++;
 				resetball();
@@ -450,20 +334,22 @@ void gameloop(int valor){
 				resetball();
 			}
 		}
-		if((score1>=12)||(score2>=12)){
-			gamestate = Stage02;
+		if((score1>=2)||(score2>=2)){
+			gamestate = 4;
 			score1 = 0;
 			score2 = score1;
 			resetball();
 		}
-		}	
+		}
+			
+	
+	
 	glutPostRedisplay();
 	glutTimerFunc(33,gameloop,0);
 }
 
 void escfunc (){
 	drawbackground();
-	drawscore();
 	drawball();
 	glColor4f(1,1,1,0.7);
 	glBegin(GL_POLYGON);
@@ -474,10 +360,6 @@ void escfunc (){
 	glEnd();
 	drawbar(bar1x,bar1y);
 	drawbar(bar2x,bar2y);
-		if(previousstate==4){
-			drawbarvert(bar3x,bar3y);
-			drawbarvert(bar4x,bar4y);
-		}
 }
 
 void drawscene(){
@@ -485,32 +367,22 @@ void drawscene(){
 	glColor3f(1,1,1);
 
 	switch (gamestate){//Detects the game mode and draws accordingly.
-		case Pause : escfunc();break;
-		case Stage01 :{
+		case 1 : escfunc();break;
+		case 0 :{
 			drawbackground();
-			drawscore();
 			drawball();
 			drawbar(bar1x,bar1y);
 			drawbar(bar2x,bar2y);
 		}break;
-		case Main_Menu : drawbackground();break;
-		case Credits : drawbackground();break;
-		case Instructions : drawbackground();break;
-		case Stage02 : {
+		case 2 : drawbackground();break;
+		case 3 : drawbackground();break;
+		case 4 : {
 			drawbackground();
-			drawscore();
 			drawball();
 			drawbar(bar1x,bar1y);
 			drawbar(bar2x,bar2y);
 			drawbarvert(bar3x,bar3y);
 			drawbarvert(bar4x,bar4y);
-		}break;
-		case Ball_Enter_Animation : {
-			drawbackground();
-			drawscore();
-			drawball();
-			drawbar(bar1x,bar1y);
-			drawbar(bar2x,bar2y);
 		}break;
 	}
 
@@ -538,6 +410,12 @@ void redimensionada(int width, int height) {
 }
 
 int main(int argc, char** argv) {
+	if(!barImpact.openFromFile("impactBars.wav")){
+		printf("Erro\n");
+	}
+	if(!zoneImpact.openFromFile("impactZone.wav")){
+		printf("Erro\n");
+	}
    glutInit(&argc, argv);
    glutInitContextVersion(1, 1);
    glutInitContextProfile(GLUT_COMPATIBILITY_PROFILE);
