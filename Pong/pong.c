@@ -3,6 +3,7 @@
 #include <math.h>
 #include <GL/glew.h>
 #include <GL/freeglut.h>
+#include <SFML/Audio.hpp>
 //Compilation flags g++ pong.c -lGL -lGLU -lglut -lSOIL;
 //Defines screen size 
 #define sizex 500
@@ -67,6 +68,8 @@ GLuint idCredits;
 GLuint idInstructions;
 GLuint idNumbers[10];
 GLuint idCrown;
+sf::Music barImpact;
+sf::Music zoneImpact;
 
 GLuint loadtexture (const char* file){
 	GLuint texture = SOIL_load_OGL_texture(
@@ -401,11 +404,17 @@ void gameloop(int valor){
 		bally = bally + ballspeedy*ballspeedmod;//Moves the ball in the y axis
 		//All logic below here is based off of them juicy magical numbers because it was made on prototype phase. Alas, I am too lazy to change the code so please don't change the window size.
 		if (gamestate == Stage01){
-			if (ballx>sizex-180)//Reflects the ball off the sides
+			if (ballx>sizex-180){//Reflects the ball off the sides
 				ballspeedx = -1;
-			if (ballx<-sizex+180)
+				zoneImpact.play();
+			}
+			if (ballx<-sizex+180){
 				ballspeedx = 1;
+				zoneImpact.play();
+			}
 		}
+
+
 
 		if(bar1x<-280)//Limits the movement of the player's cursors to stay within the screen
 			bar1x=-280;
@@ -428,12 +437,14 @@ void gameloop(int valor){
 		if(ballspeedy==1){
 			if((bally>=480)&&(bally<=500)&&((ballx>bar1x-90)&&(ballx<bar1x+90))){//Reflects the ball if it hits the top bar
 				ballspeedy = -1;
+				barImpact.play();
 				ballspeedmod = ballspeedmod*1.05;//Accelerates the ball whenever it reflects off the racket by 5%
 			}
 		}
 		else{
 			if((bally<=-480)&&(bally>=-500)&&((ballx>bar2x-90)&&(ballx<bar2x+90))){//Same as above but for the bottom bar
 				ballspeedy = 1;
+				barImpact.play();
 				ballspeedmod = ballspeedmod*1.05;
 			}
 		}
@@ -442,12 +453,14 @@ void gameloop(int valor){
 			if (ballspeedx==1){
 				if((ballx>=340)&&(ballx<=350)&&((bally>bar4y-90)&&(bally<bar4y+90))){
 					ballspeedx = -1;
+					barImpact.play();
 					ballspeedmod = ballspeedmod*1.05;
 				}
 			}
 			else{
 				if((ballx<=-340)&&(ballx>=-350)&&((bally>bar3y-90)&&(bally<bar3y+90))){
 					ballspeedx = 1;
+					barImpact.play();
 					ballspeedmod = ballspeedmod*1.05;
 				}
 			}
@@ -560,6 +573,12 @@ void redimensionada(int width, int height) {
 }
 
 int main(int argc, char** argv) {
+	if(!barImpact.openFromFile("impactBars.wav")){
+		printf("Erro\n");
+	}
+	if(!zoneImpact.openFromFile("impactZone.wav")){
+		printf("Erro\n");
+	}
    glutInit(&argc, argv);
    glutInitContextVersion(1, 1);
    glutInitContextProfile(GLUT_COMPATIBILITY_PROFILE);
