@@ -4,7 +4,7 @@
 #include <GL/glew.h>
 #include <GL/freeglut.h>
 #include <SFML/Audio.hpp>
-//Compilation flags g++ pong.c -lGL -lGLU -lglut -lSOIL;
+//Compilation flags g++ pong.c -lGL -lGLU -lglut -lSOIL -lsfml-audio;
 //Defines screen size 
 #define sizex 500
 #define sizey 500
@@ -70,6 +70,7 @@ GLuint idNumbers[10];
 GLuint idCrown;
 sf::Music barImpact;
 sf::Music zoneImpact;
+sf::Music stage01Song;
 
 GLuint loadtexture (const char* file){
 	GLuint texture = SOIL_load_OGL_texture(
@@ -322,8 +323,10 @@ void gameloop(int valor){
 				previousstate = gamestate;
 				gamestate = 1;}//Changes gamestate to 1 (Paused state) when ESC is pressed
 				break;
-			case Pause:
-				gamestate = previousstate;//Continues game when the game is paused and the ESC key is pressed
+			case Pause:{
+				gamestate = previousstate;
+				stage01Song.play();
+				}//Continues game when the game is paused and the ESC key is pressed
 				break;
 		}
 		keyboard[27] = 0;//Setting ESC to 0 here ensures that the ESC key toggles the pause menu
@@ -520,7 +523,11 @@ void drawscene(){
 	glColor3f(1,1,1);
 
 	switch (gamestate){//Detects the game mode and draws accordingly.
-		case Pause : escfunc();break;
+		case Pause : {
+			escfunc();
+			stage01Song.pause();
+		}
+			break;
 		case Stage01 :{
 			drawbackground();
 			drawscore();
@@ -573,12 +580,16 @@ void redimensionada(int width, int height) {
 }
 
 int main(int argc, char** argv) {
+	if(!stage01Song.openFromFile("Foxy.wav")){
+		printf("Erro\n");
+	}
 	if(!barImpact.openFromFile("impactBars.wav")){
 		printf("Erro\n");
 	}
 	if(!zoneImpact.openFromFile("impactZone.wav")){
 		printf("Erro\n");
 	}
+	stage01Song.play();
    glutInit(&argc, argv);
    glutInitContextVersion(1, 1);
    glutInitContextProfile(GLUT_COMPATIBILITY_PROFILE);
