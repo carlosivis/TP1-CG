@@ -108,7 +108,7 @@ void setup(){
 	idRanNeutral = loadtexture("Sprites4.png");
 
 	//Ball 2: Cat
-	idCatBall = loadtexture("carBall.png");
+	idCatBall = loadtexture("catBall.png");
 
 	//Stage Backgrounds
 	idBackPhantasm = loadtexture("BackFinal1.png");
@@ -269,7 +269,7 @@ void drawball(){
 			glEnd();
 			glPopMatrix();
 	}
-	if ((gamestate == Stage01)||(gamestate==Stage02)){//Draws the ball when the gamestate = 0 (Gameplay)
+	if ((gamestate == Stage01)||(gamestate == Stage02)){//Draws the ball when the gamestate = 0 (Gameplay)
 		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, idRanBall);
 		glPushMatrix();
@@ -402,23 +402,23 @@ void gameloop(int valor){
 
 	//Game logic
 	if ((gamestate==Stage01)||(gamestate==Stage02)){
-		if (keyboard[111]==1)//Moves the player's cursors
+		if (keyboard[106]==1)//Moves the player's cursors
 			bar1x = bar1x -10;
-		if (keyboard[112]==1)
+		if (keyboard[108]==1)
 			bar1x = bar1x +10;
-		if (keyboard[113]==1)
+		if (keyboard[97]==1)
 			bar2x = bar2x -10;
-		if (keyboard[119]==1)
+		if (keyboard[100]==1)
 			bar2x = bar2x +10;
 
 		if (gamestate==Stage02){
-			if (keyboard[109]==1)//Moves the player's cursors
+			if (keyboard[107]==1)//Moves the player's cursors
 				bar4y = bar4y -20;
-			if (keyboard[107]==1)
+			if (keyboard[105]==1)
 				bar4y = bar4y +20;
-			if (keyboard[122]==1)
+			if (keyboard[115]==1)
 				bar3y = bar3y -20;
-			if (keyboard[97]==1)
+			if (keyboard[119]==1)
 				bar3y = bar3y +20;
 		}
 		
@@ -509,6 +509,8 @@ void gameloop(int valor){
 		}
 		if((gamestate==Stage01)&&((score1>=12)||(score2>=12))){//Advances from stage 1 to 2
 			gamestate = Stage02;
+			stage02Song.setLoop(true);
+			backgroundstate = Stage02_Texture;
 			stage01Song.stop();
 			stage02Song.play();
 			score1 = 0;
@@ -614,6 +616,7 @@ int main(int argc, char** argv) {
 	if(!zoneImpact.openFromFile("impactZone.wav")){
 		printf("Erro\n");
 	}
+    stage01Song.setLoop(true);
 	stage01Song.play();
    glutInit(&argc, argv);
    glutInitContextVersion(1, 1);
