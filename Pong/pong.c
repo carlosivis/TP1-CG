@@ -108,7 +108,7 @@ void setup(){
 	idRanNeutral = loadtexture("Sprites4.png");
 
 	//Ball 2: Cat
-	idCatBall = loadtexture("carBall.png");
+	idCatBall = loadtexture("catBall.png");
 
 	//Stage Backgrounds
 	idBackPhantasm = loadtexture("BackFinal1.png");
@@ -127,6 +127,20 @@ void setup(){
 	idNumbers[9] = loadtexture("N9.png");
 	//Winning player crown
 	idCrown = loadtexture("Chen_Spread.png");
+	//Soundboard
+	    if(!stage02Song.openFromFile("nyan.wav")){
+        printf("Erro\n");
+    }
+	if(!stage01Song.openFromFile("Foxy.wav")){
+		printf("Erro\n");
+	}
+	if(!barImpact.openFromFile("impactBars.wav")){
+		printf("Erro\n");
+	}
+	if(!zoneImpact.openFromFile("impactZone.wav")){
+		printf("Erro\n");
+	}
+	stage01Song.play();
 }
 
 void drawbackground(){
@@ -247,73 +261,51 @@ void drawscore(){
 
 }
 
+void drawballaux(){
+	glBegin(GL_POLYGON);
+			glTexCoord2f(0,0);
+			glVertex2f(-30,-30);
+				
+			glTexCoord2f(1,0);
+			glVertex2f(30,-30);
+
+			glTexCoord2f(1,1);
+			glVertex2f(30,30);
+
+			glTexCoord2f(0,1);
+			glVertex2f(-30,30);
+		glEnd();
+}
+
 void drawball(){
 	glColor3f(1,1,1);
+	glEnable(GL_TEXTURE_2D);
+	switch (gamestate){
+		case Ball_Enter_Animation : glBindTexture(GL_TEXTURE_2D, idRanSlide); break;
+		case Stage01 : glBindTexture(GL_TEXTURE_2D, idRanBall); break;
+		case Stage02 : glBindTexture(GL_TEXTURE_2D, idCatBall); break;
+		case Pause : {switch (previousstate){
+			case Stage01 : glBindTexture(GL_TEXTURE_2D, idRanBall); break;
+			case Stage02 : glBindTexture(GL_TEXTURE_2D, idCatBall); break;
+		}}
+	}
+	glPushMatrix();
+	glTranslatef(ballx,bally,0);
 	if(gamestate==Ball_Enter_Animation){
-		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, idRanSlide);
-		glPushMatrix();
-			glTranslatef(ballx,bally,0);
-			glBegin(GL_POLYGON);
-				glTexCoord2f(0,0);
-				glVertex2f(-30,-30);
-				
-				glTexCoord2f(1,0);
-				glVertex2f(30,-30);
-
-				glTexCoord2f(1,1);
-				glVertex2f(30,30);
-
-				glTexCoord2f(0,1);
-				glVertex2f(-30,30);
-			glEnd();
-			glPopMatrix();
+			drawballaux();
 	}
 	if ((gamestate == Stage01)||(gamestate==Stage02)){//Draws the ball when the gamestate = 0 (Gameplay)
-		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, idRanBall);
-		glPushMatrix();
-			glTranslatef(ballx,bally,0);
 			glRotatef(ballrotateangle,0,0,1);
 			ballrotateangle = ballrotateangle + 30;
 			if (ballrotateangle>360)
 				ballrotateangle = ballrotateangle - 360;
-			glBegin(GL_POLYGON);
-				glTexCoord2f(0,0);
-				glVertex2f(-30,-30);
-				
-				glTexCoord2f(1,0);
-				glVertex2f(30,-30);
-
-				glTexCoord2f(1,1);
-				glVertex2f(30,30);
-
-				glTexCoord2f(0,1);
-				glVertex2f(-30,30);
-			glEnd();
-			glPopMatrix();
+			drawballaux();
 		}
 	if ((gamestate == Stage01)||(gamestate==Stage02)||(gamestate==Pause)){//Same as above but for gamestate = 1 (Paused). The difference is that the ball's rotation speed isn't updated here, meaning the ball maintains its angle when the game is paused
-		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, idRanBall);
-		glPushMatrix();
-			glTranslatef(ballx,bally,0);
 			glRotatef(ballrotateangle,0,0,1);
-			glBegin(GL_POLYGON);
-				glTexCoord2f(0,0);
-				glVertex2f(-30,-30);
-				
-				glTexCoord2f(1,0);
-				glVertex2f(30,-30);
-
-				glTexCoord2f(1,1);
-				glVertex2f(30,30);
-
-				glTexCoord2f(0,1);
-				glVertex2f(-30,30);
-			glEnd();
-			glPopMatrix();
+			drawballaux();
 	}
+	glPopMatrix();
 	glDisable(GL_TEXTURE_2D);
 }
 
@@ -350,8 +342,9 @@ void gameloop(int valor){
 	if ((gamestate==Pause)&&(keyboard[120]))//Exits game when the game is paused and the x key is pressed
 		exit(0);
 
-	if (gamestate==Pause)
-		if(keyboard[100]){
+	switch (gamestate){
+		case Pause : {
+					if(keyboard[100]){
             if(previousstate==Stage01)
                 stage01Song.pause();
             if(previousstate==Stage02)
@@ -362,14 +355,15 @@ void gameloop(int valor){
 			score2 = score1;
 			backgroundstate = Main_Menu_Texture;
 		}
+		} break;
 
-	if (gamestate==Ball_Enter_Animation){
-		ballx = ballx + 10;
-		if (ballx>0)
-			gamestate = Stage01;
-	}
+		case Ball_Enter_Animation : {
+			ballx = ballx + 10;
+			if (ballx>0)
+				gamestate = Stage01;
+		} break;
 
-	if (gamestate==Main_Menu){
+		case Main_Menu : {
 		drawbackground();
 		if (keyboard[122]){//Key that plays the game
 			ballx = -400;
@@ -380,25 +374,25 @@ void gameloop(int valor){
 			backgroundstate = Credits_Texture;}
 		if (keyboard[105]){//Key that leads to the instructions screen.
 			gamestate = Instructions;
-			backgroundstate = Instructions_Texture;
-		}
+			backgroundstate = Instructions_Texture;}
 		if (keyboard[99])//Key to exit from the menu.
 			exit(0);
+		} break;
+
+		case Credits : {
+		if (keyboard[122]){
+			gamestate = Main_Menu;
+			backgroundstate = Main_Menu_Texture;
+			keyboard[122]=0;}
+		} break;
+
+		case Instructions : {
+		if (keyboard[122]){
+			gamestate = Main_Menu;
+			backgroundstate = Main_Menu_Texture;
+			keyboard[122]=0;}
+		} break;
 	}
-
-	if (gamestate==Credits)
-		if (keyboard[122]){
-			gamestate = Main_Menu;
-			backgroundstate = Main_Menu_Texture;
-			keyboard[122]=0;
-		}
-
-	if (gamestate==Instructions)
-		if (keyboard[122]){
-			gamestate = Main_Menu;
-			backgroundstate = Main_Menu_Texture;
-			keyboard[122]=0;
-		}
 
 	//Game logic
 	if ((gamestate==Stage01)||(gamestate==Stage02)){
@@ -435,8 +429,6 @@ void gameloop(int valor){
 				zoneImpact.play();
 			}
 		}
-
-
 
 		if(bar1x<-280)//Limits the movement of the player's cursors to stay within the screen
 			bar1x=-280;
@@ -515,6 +507,9 @@ void gameloop(int valor){
 			score2 = score1;
 			resetball();
 		}
+		/*if((score1>99)||(score2>>99)){
+		
+		}*/
 		}	
 	glutPostRedisplay();
 	glutTimerFunc(33,gameloop,0);
@@ -602,19 +597,6 @@ void redimensionada(int width, int height) {
 }
 
 int main(int argc, char** argv) {
-    if(!stage02Song.openFromFile("nyan.wav")){
-        printf("Erro\n");
-    }
-	if(!stage01Song.openFromFile("Foxy.wav")){
-		printf("Erro\n");
-	}
-	if(!barImpact.openFromFile("impactBars.wav")){
-		printf("Erro\n");
-	}
-	if(!zoneImpact.openFromFile("impactZone.wav")){
-		printf("Erro\n");
-	}
-	stage01Song.play();
    glutInit(&argc, argv);
    glutInitContextVersion(1, 1);
    glutInitContextProfile(GLUT_COMPATIBILITY_PROFILE);
