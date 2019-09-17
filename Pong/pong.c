@@ -27,6 +27,7 @@ int backgroundstate = 1;
 #define Main_Menu_Texture 1
 #define Credits_Texture 2
 #define Instructions_Texture 3
+#define Stage02_Texture 4
 //Ball flag.
 int ballstate = 0;
 //Ball position
@@ -68,9 +69,13 @@ GLuint idCredits;
 GLuint idInstructions;
 GLuint idNumbers[10];
 GLuint idCrown;
+GLuint idCatBall;
+GLuint idBackStage02;
+// Sons
 sf::Music barImpact;
 sf::Music zoneImpact;
 sf::Music stage01Song;
+sf::Music stage02Song;
 
 GLuint loadtexture (const char* file){
 	GLuint texture = SOIL_load_OGL_texture(
@@ -101,8 +106,14 @@ void setup(){
 	idRanSlide = loadtexture("Sprites2.png");
 	idRanBall = loadtexture("Sprites3.png");
 	idRanNeutral = loadtexture("Sprites4.png");
+
+	//Ball 2: Cat
+	idCatBall = loadtexture("carBall.png");
+
 	//Stage Backgrounds
 	idBackPhantasm = loadtexture("BackFinal1.png");
+	idBackStage02 = loadtexture("back2.png");
+
 	//Numbers
 	idNumbers[0] = loadtexture("N0.png");
 	idNumbers[1] = loadtexture("N1.png");
@@ -126,6 +137,7 @@ void drawbackground(){
 		case Main_Menu_Texture : glBindTexture(GL_TEXTURE_2D,idMenu01);break;
 		case Credits_Texture : glBindTexture(GL_TEXTURE_2D,idCredits);break;
 		case Instructions_Texture : glBindTexture(GL_TEXTURE_2D,idInstructions);break;
+		case Stage02_Texture : glBindTexture(GL_TEXTURE_2D,idBackStage02);break;
 	}
 	glBegin(GL_POLYGON);
 		glTexCoord2f(0,0);
@@ -325,7 +337,10 @@ void gameloop(int valor){
 				break;
 			case Pause:{
 				gamestate = previousstate;
-				stage01Song.play();
+				if(previousstate==Stage01)
+				    stage01Song.play();
+				if(previousstate==Stage02)
+				    stage02Song.play();
 				}//Continues game when the game is paused and the ESC key is pressed
 				break;
 		}
@@ -337,6 +352,10 @@ void gameloop(int valor){
 
 	if (gamestate==Pause)
 		if(keyboard[100]){
+            if(previousstate==Stage01)
+                stage01Song.pause();
+            if(previousstate==Stage02)
+                stage02Song.pause();
 			gamestate = Main_Menu;
 			resetball();
 			score1 = 0;
@@ -490,6 +509,8 @@ void gameloop(int valor){
 		}
 		if((gamestate==Stage01)&&((score1>=12)||(score2>=12))){//Advances from stage 1 to 2
 			gamestate = Stage02;
+			stage01Song.stop();
+			stage02Song.play();
 			score1 = 0;
 			score2 = score1;
 			resetball();
@@ -526,6 +547,7 @@ void drawscene(){
 		case Pause : {
 			escfunc();
 			stage01Song.pause();
+			stage02Song.pause();
 		}
 			break;
 		case Stage01 :{
@@ -580,6 +602,9 @@ void redimensionada(int width, int height) {
 }
 
 int main(int argc, char** argv) {
+    if(!stage02Song.openFromFile("nyan.wav")){
+        printf("Erro\n");
+    }
 	if(!stage01Song.openFromFile("Foxy.wav")){
 		printf("Erro\n");
 	}
