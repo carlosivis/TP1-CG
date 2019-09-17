@@ -58,6 +58,8 @@ int score1 = 0;
 int score2 = 0;
 //Global keyboard vector
 int keyboard [127];
+// volumes
+float volume = 100;
 //Texture IDs. I've no idea how to work with textures, so this is mostly copied from the teacher's example code. The texture loader is a carbon copy, in fact. Our characters have very simple animations, so each frame is saved individually. Wasteful, I know.
 GLuint idRanBall;
 GLuint idRanSlide;
@@ -523,6 +525,16 @@ void gameloop(int valor){
 }
 
 void escfunc (){
+    if(keyboard[43]){
+        volume=volume+10;
+        stage01Song.setVolume(volume);
+        stage02Song.setVolume(volume);
+    }
+    if(keyboard[45]){
+        volume = volume-10;
+        stage01Song.setVolume(volume);
+        stage02Song.setVolume(volume);
+    }
 	drawbackground();
 	drawscore();
 	drawball();
