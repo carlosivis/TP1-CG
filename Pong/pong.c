@@ -4,6 +4,7 @@
 #include <GL/glew.h>
 #include <GL/freeglut.h>
 #include <SFML/Audio.hpp>
+#include <unistd.h>
 //Compilation flags g++ pong.c -lGL -lGLU -lglut -lSOIL -lsfml-audio;
 //Defines screen size 
 #define sizex 500
@@ -18,6 +19,8 @@ int gamestate = 2;
 #define Credits 3
 #define Instructions 5
 #define Ball_Enter_Animation 6
+#define PauseGame 9
+
 //Stores the previous state of the game. Required in order to return from the pause menu.
 int previousstate = 2;
 //Background flag. Similar in function to the gamestate variable.
@@ -28,6 +31,7 @@ int backgroundstate = 1;
 #define Credits_Texture 2
 #define Instructions_Texture 3
 #define Stage02_Texture 4
+#define BarP 1
 //Ball flag.
 int ballstate = 0;
 //Ball position
@@ -58,7 +62,7 @@ int score1 = 0;
 int score2 = 0;
 //Global keyboard vector
 int keyboard [127];
-// volumes
+// volume
 float volume = 100;
 //Texture IDs. I've no idea how to work with textures, so this is mostly copied from the teacher's example code. The texture loader is a carbon copy, in fact. Our characters have very simple animations, so each frame is saved individually. Wasteful, I know.
 GLuint idRanBall;
@@ -73,11 +77,15 @@ GLuint idNumbers[10];
 GLuint idCrown;
 GLuint idCatBall;
 GLuint idBackStage02;
+GLuint idBarTex1;
+GLuint idBarTex2;
+GLuint idPause;
 // Sons
 sf::Music barImpact;
 sf::Music zoneImpact;
 sf::Music stage01Song;
 sf::Music stage02Song;
+sf::Music Menu_Music;
 
 GLuint loadtexture (const char* file){
 	GLuint texture = SOIL_load_OGL_texture(
@@ -103,12 +111,15 @@ void setup(){
 	idMenu01 = loadtexture("MenuPlaceholder.png");
 	idCredits = loadtexture("CreditsPlaceholder.png");
 	idInstructions = loadtexture("InstructionsPlaceholder.png");
+	idPause = loadtexture("Pause.png");
 	//Ball 1 : Yakumo Ran
 	idRanStart = loadtexture("Sprites1.png");
 	idRanSlide = loadtexture("Sprites2.png");
 	idRanBall = loadtexture("Sprites3.png");
 	idRanNeutral = loadtexture("Sprites4.png");
-
+	//Bars texture
+	idBarTex1 = loadtexture("barP1.png"); 
+	idBarTex2 = loadtexture("barP2.png");
 	//Ball 2: Cat
 	idCatBall = loadtexture("catBall.png");
 
@@ -129,6 +140,26 @@ void setup(){
 	idNumbers[9] = loadtexture("N9.png");
 	//Winning player crown
 	idCrown = loadtexture("Chen_Spread.png");
+	//Soundboard
+	if(!stage02Song.openFromFile("nyan.wav")){
+        printf("Erro\n");
+    }
+	if(!stage01Song.openFromFile("Foxy.wav")){
+		printf("Erro\n");
+	}
+	if(!barImpact.openFromFile("impactBars.wav")){
+		printf("Erro\n");
+	}
+	if(!zoneImpact.openFromFile("impactZone.wav")){
+		printf("Erro\n");
+	}
+	if(!Menu_Music.openFromFile("menu.wav")){
+		printf("Erro\n");
+	}
+	Menu_Music.setLoop(true);
+	stage01Song.setLoop(true);
+	stage02Song.setLoop(true);
+	Menu_Music.play();
 }
 
 void drawbackground(){
@@ -140,7 +171,7 @@ void drawbackground(){
 		case Credits_Texture : glBindTexture(GL_TEXTURE_2D,idCredits);break;
 		case Instructions_Texture : glBindTexture(GL_TEXTURE_2D,idInstructions);break;
 		case Stage02_Texture : glBindTexture(GL_TEXTURE_2D,idBackStage02);break;
-	}
+			}
 	glBegin(GL_POLYGON);
 		glTexCoord2f(0,0);
 		glVertex2f(-350,-500);
@@ -159,12 +190,13 @@ void drawbackground(){
 
 void drawbar(int x,int y){
 	glColor3f (1,1,1);
-	glBegin(GL_POLYGON);
+		glBegin(GL_POLYGON);
 		glVertex2f(x-70,y);
 		glVertex2f(x-70,y-10);
 		glVertex2f(x+70,y-10);
 		glVertex2f(x+70,y);
 	glEnd();
+	glDisable(GL_TEXTURE_2D);
 }
 
 void drawbarvert(int x, int y){
@@ -249,73 +281,51 @@ void drawscore(){
 
 }
 
+void drawballaux(){
+	glBegin(GL_POLYGON);
+			glTexCoord2f(0,0);
+			glVertex2f(-30,-30);
+				
+			glTexCoord2f(1,0);
+			glVertex2f(30,-30);
+
+			glTexCoord2f(1,1);
+			glVertex2f(30,30);
+
+			glTexCoord2f(0,1);
+			glVertex2f(-30,30);
+		glEnd();
+}
+
 void drawball(){
 	glColor3f(1,1,1);
-	if(gamestate==Ball_Enter_Animation){
-		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, idRanSlide);
-		glPushMatrix();
-			glTranslatef(ballx,bally,0);
-			glBegin(GL_POLYGON);
-				glTexCoord2f(0,0);
-				glVertex2f(-30,-30);
-				
-				glTexCoord2f(1,0);
-				glVertex2f(30,-30);
-
-				glTexCoord2f(1,1);
-				glVertex2f(30,30);
-
-				glTexCoord2f(0,1);
-				glVertex2f(-30,30);
-			glEnd();
-			glPopMatrix();
+	glEnable(GL_TEXTURE_2D);
+	switch (gamestate){
+		case Ball_Enter_Animation : glBindTexture(GL_TEXTURE_2D, idRanSlide); break;
+		case Stage01 : glBindTexture(GL_TEXTURE_2D, idRanBall); break;
+		case Stage02 : glBindTexture(GL_TEXTURE_2D, idCatBall); break;
+		case Pause : {switch (previousstate){
+			case Stage01 : glBindTexture(GL_TEXTURE_2D, idRanBall); break;
+			case Stage02 : glBindTexture(GL_TEXTURE_2D, idCatBall); break;
+		}}
 	}
-	if ((gamestate == Stage01)||(gamestate == Stage02)){//Draws the ball when the gamestate = 0 (Gameplay)
-		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, idRanBall);
-		glPushMatrix();
-			glTranslatef(ballx,bally,0);
+	glPushMatrix();
+	glTranslatef(ballx,bally,0);
+	if(gamestate==Ball_Enter_Animation){
+			drawballaux();
+	}
+	if ((gamestate == Stage01)||(gamestate==Stage02)){//Draws the ball when the gamestate = 0 (Gameplay)
 			glRotatef(ballrotateangle,0,0,1);
 			ballrotateangle = ballrotateangle + 30;
 			if (ballrotateangle>360)
 				ballrotateangle = ballrotateangle - 360;
-			glBegin(GL_POLYGON);
-				glTexCoord2f(0,0);
-				glVertex2f(-30,-30);
-				
-				glTexCoord2f(1,0);
-				glVertex2f(30,-30);
-
-				glTexCoord2f(1,1);
-				glVertex2f(30,30);
-
-				glTexCoord2f(0,1);
-				glVertex2f(-30,30);
-			glEnd();
-			glPopMatrix();
+			drawballaux();
 		}
 	if ((gamestate == Stage01)||(gamestate==Stage02)||(gamestate==Pause)){//Same as above but for gamestate = 1 (Paused). The difference is that the ball's rotation speed isn't updated here, meaning the ball maintains its angle when the game is paused
-		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, idRanBall);
-		glPushMatrix();
-			glTranslatef(ballx,bally,0);
 			glRotatef(ballrotateangle,0,0,1);
-			glBegin(GL_POLYGON);
-				glTexCoord2f(0,0);
-				glVertex2f(-30,-30);
-				
-				glTexCoord2f(1,0);
-				glVertex2f(30,-30);
-
-				glTexCoord2f(1,1);
-				glVertex2f(30,30);
-
-				glTexCoord2f(0,1);
-				glVertex2f(-30,30);
-			glEnd();
-			glPopMatrix();
+			drawballaux();
 	}
+	glPopMatrix();
 	glDisable(GL_TEXTURE_2D);
 }
 
@@ -326,6 +336,19 @@ void resetball (){
 }
 
 void gameloop(int valor){
+	if(keyboard[43]){
+        volume=volume+10;
+        stage01Song.setVolume(volume);
+        stage02Song.setVolume(volume);
+        Menu_Music.setVolume(volume);
+    }
+    if(keyboard[45]){
+        volume = volume-10;
+        stage01Song.setVolume(volume);
+        stage02Song.setVolume(volume);
+        Menu_Music.setVolume(volume);
+
+    }
 	//Menus
 	if(keyboard[27]){
 		switch(gamestate){
@@ -352,55 +375,56 @@ void gameloop(int valor){
 	if ((gamestate==Pause)&&(keyboard[120]))//Exits game when the game is paused and the x key is pressed
 		exit(0);
 
-	if (gamestate==Pause)
-		if(keyboard[100]){
-            if(previousstate==Stage01)
-                stage01Song.pause();
-            if(previousstate==Stage02)
-                stage02Song.pause();
+	switch (gamestate){
+		case Pause : {
+			if(keyboard[122]){
 			gamestate = Main_Menu;
 			resetball();
 			score1 = 0;
 			score2 = score1;
 			backgroundstate = Main_Menu_Texture;
+			Menu_Music.play();
 		}
+		} break;
 
-	if (gamestate==Ball_Enter_Animation){
-		ballx = ballx + 10;
-		if (ballx>0)
-			gamestate = Stage01;
-	}
+		case Ball_Enter_Animation : {
+			Menu_Music.stop();
+			ballx = ballx + 10;
+			if (ballx>0)
+				gamestate = Stage01;
+		} break;
 
-	if (gamestate==Main_Menu){
+		case Main_Menu : {
 		drawbackground();
 		if (keyboard[122]){//Key that plays the game
 			ballx = -400;
 			gamestate = Ball_Enter_Animation;
 			backgroundstate = Phantasm_Texture;}
+			stage01Song.play();
 		if (keyboard[120]){//Key that leads to the credits screen.
 			gamestate = Credits;
 			backgroundstate = Credits_Texture;}
 		if (keyboard[105]){//Key that leads to the instructions screen.
 			gamestate = Instructions;
-			backgroundstate = Instructions_Texture;
-		}
+			backgroundstate = Instructions_Texture;}
 		if (keyboard[99])//Key to exit from the menu.
 			exit(0);
+		} break;
+
+		case Credits : {
+		if (keyboard[122]){
+			gamestate = Main_Menu;
+			backgroundstate = Main_Menu_Texture;
+			keyboard[122]=0;}
+		} break;
+
+		case Instructions : {
+		if (keyboard[122]){
+			gamestate = Main_Menu;
+			backgroundstate = Main_Menu_Texture;
+			keyboard[122]=0;}
+		} break;
 	}
-
-	if (gamestate==Credits)
-		if (keyboard[122]){
-			gamestate = Main_Menu;
-			backgroundstate = Main_Menu_Texture;
-			keyboard[122]=0;
-		}
-
-	if (gamestate==Instructions)
-		if (keyboard[122]){
-			gamestate = Main_Menu;
-			backgroundstate = Main_Menu_Texture;
-			keyboard[122]=0;
-		}
 
 	//Game logic
 	if ((gamestate==Stage01)||(gamestate==Stage02)){
@@ -437,8 +461,6 @@ void gameloop(int valor){
 				zoneImpact.play();
 			}
 		}
-
-
 
 		if(bar1x<-280)//Limits the movement of the player's cursors to stay within the screen
 			bar1x=-280;
@@ -510,22 +532,24 @@ void gameloop(int valor){
 			}
 		}
 		if((gamestate==Stage01)&&((score1>=12)||(score2>=12))){//Advances from stage 1 to 2
-			gamestate = Stage02;
-			stage02Song.setLoop(true);
 			backgroundstate = Stage02_Texture;
+			gamestate= Stage02;
 			stage01Song.stop();
 			stage02Song.play();
 			score1 = 0;
 			score2 = score1;
 			resetball();
 		}
+		/*if((score1>99)||(score2>>99)){
+		
+		}*/
 		}	
 	glutPostRedisplay();
 	glutTimerFunc(33,gameloop,0);
 }
 
 void escfunc (){
-    if(keyboard[43]){
+	if(keyboard[43]){
         volume=volume+10;
         stage01Song.setVolume(volume);
         stage02Song.setVolume(volume);
@@ -535,22 +559,22 @@ void escfunc (){
         stage01Song.setVolume(volume);
         stage02Song.setVolume(volume);
     }
-	drawbackground();
+   	drawbackground();
 	drawscore();
 	drawball();
-	glColor4f(1,1,1,0.7);
-	glBegin(GL_POLYGON);
-		glVertex2f(-200,-200);
-		glVertex2f(200,-200);
-		glVertex2f(200,200);
-		glVertex2f(-200,200);
-	glEnd();
 	drawbar(bar1x,bar1y);
 	drawbar(bar2x,bar2y);
 		if(previousstate==4){
 			drawbarvert(bar3x,bar3y);
 			drawbarvert(bar4x,bar4y);
 		}
+    glColor4f(1,1,1,0.7);
+    glBegin(GL_POLYGON);
+    glVertex2f(-200,-200);
+    glVertex2f(200,-200);
+    glVertex2f(200,200);
+    glVertex2f(-200,200);
+    glEnd();
 }
 
 void drawscene(){
@@ -616,20 +640,6 @@ void redimensionada(int width, int height) {
 }
 
 int main(int argc, char** argv) {
-    if(!stage02Song.openFromFile("nyan.wav")){
-        printf("Erro\n");
-    }
-	if(!stage01Song.openFromFile("Foxy.wav")){
-		printf("Erro\n");
-	}
-	if(!barImpact.openFromFile("impactBars.wav")){
-		printf("Erro\n");
-	}
-	if(!zoneImpact.openFromFile("impactZone.wav")){
-		printf("Erro\n");
-	}
-    stage01Song.setLoop(true);
-	stage01Song.play();
    glutInit(&argc, argv);
    glutInitContextVersion(1, 1);
    glutInitContextProfile(GLUT_COMPATIBILITY_PROFILE);
@@ -637,7 +647,7 @@ int main(int argc, char** argv) {
    //Stuff not worth looking at (yet)
    glutInitWindowSize(700, 1000);
    glutInitWindowPosition(100, 100);
-   glutCreateWindow("Pong Prototype");
+   glutCreateWindow("Pong");
    //Self explanatory names
    glutDisplayFunc(drawscene);
    glutKeyboardFunc(keypress);
