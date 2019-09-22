@@ -1,6 +1,6 @@
   
 CC=g++
-OPCOES_COMPILADOR=-I. -I/../SOIL -lGL -lGLU -lglut -lSOIL -lsfml-audio
+OPCOES_COMPILADOR=-I. -I/../SOIL -lGL -lGLU -lglut -lSOIL -lsfml-audio -unistd.h
 TODOS_ARQUIVOS_PONTOH =
 TODOS_ARQUIVOS_OBJ = pong.o 
 
